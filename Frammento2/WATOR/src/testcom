@@ -1,0 +1,63 @@
+#!/bin/bash
+# \author lso15
+# \ brief test base di comunicazione tra wator e visualizer
+
+# rimuovo il file di check 
+rm -fr ${CHECK_FILE}
+# rimuovo tutti i file di tipo wator_worker_[0-9]*
+rm -f "wator_worker_?*"
+# rimuovo il dump file del visualizer 
+rm -f "visualizer_dump"
+
+# attivazione con 4 worker threads 
+# il visualizer dovra' fare il dump del pianeta ricevuto dal processo wotor
+# nel file visualizer_dump
+# in questo test si suppone che wator non applichi nessuna regola di 
+# evoluzione sul pianeta di input
+./wator planet1.dat -n 4 -f visualizer_dump &
+
+# attendo 1 secondo e invio SIGUSR1 per forzare il checkpointing
+sleep 1
+if ! killall -s SIGUSR1 wator ; then
+    exit 1
+fi
+
+# attendo 1 secondo e invio SIGUSR1 per forzare il checkpointing
+sleep 1
+if ! killall -s SIGUSR1 wator ; then
+    exit 1
+fi
+
+# attendo 1 secondo e controllo se e' ancora attivo e se ha creato il file
+sleep 1
+if ! killall -w wator && [ -f $CHECK_FILE]; then
+    exit 1
+fi
+
+# e' stato terminato correttamente anche il processo visualizer ?
+if   killall visualizer ; then
+    exit 1
+fi
+
+# controllo che i file wator_worker_? siano stati creati
+# controllo che i file wator_worker_? siano stati creati
+if  ! [ -f ./wator_worker_0 ] || 
+    ! [ -f ./wator_worker_1 ] ||
+    ! [ -f ./wator_worker_2 ] ||
+    ! [ -f ./wator_worker_3 ]; then
+    exit 1
+fi
+
+# controllo che il file di dump del visualizer esista
+if [ ! -f ./visualizer_dump ] ; then
+    exit 1
+fi
+# .... e che sia identico al file planet1.dat
+if ! diff -q ./planet1.dat ./visualizer_dump > /dev/null ; then
+    exit 1  # i file sono differenti
+fi
+
+exit 0
+
+
+

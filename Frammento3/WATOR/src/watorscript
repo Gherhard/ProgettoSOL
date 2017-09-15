@@ -1,0 +1,155 @@
+#!/bin/bash
+#
+# \file watorscript
+# \author Bachmann Gherhard
+#  Si dichiara che il contenuto di questo file e' in ogni sua parte opera
+#  originale dell' autore.
+
+# controllo gli argomenti dello script
+if [ $# -eq 0 ]
+  then
+    echo "No Arguments" >&2
+    exit 1
+fi
+
+if [ $# -gt 2 ]
+then 
+	echo "Too many arguments" >&2
+	exit 1
+fi
+#menu help
+function mhelp
+{
+	echo "---WatorScript---" >&2
+	echo "The options are:"  >&2
+	echo "-f to count fishes" >&2
+	echo "-s to count sharks" >&2
+	echo "--help to get help" >&2
+	echo "No option to check the files format" >&2
+	exit 1
+}
+#controllo del formato del file, non devo controllare che il file ci sia perche lo faccio sopra
+function format
+{
+	file=$1
+	i=0
+	j=0
+	exec 7< $file
+	#controllo delle prime due righe
+	while read -u 7 input;
+	do
+		if [ $i -lt 2 ];then #La parte dei primi 2 numeri interi
+			a[i]=$input
+			if [[ -n ${input//[0-9]/} ]];then
+				echo "Malformattata" >&2
+				exec 7>&-
+				exit 1
+			fi
+		else
+			j=0
+			for word in $input
+			do
+				if [ $word != "F" ] && [ $word != "S" ] && [ $word != "W" ];then
+					echo "Malformattata" >&2
+					exec 7>&-
+					exit 1
+				fi
+				j=$((j+1))
+			done
+			#controllo il numero di colonne
+			if [ $j -ne ${a[1]} ];then
+				echo "Malformattata: nr di colonne sbagliato" >&2
+				exec 7>&-
+				exit 1
+			fi
+		fi #fi finale
+		i=$((i+1))
+	done
+	i=$((i-2))
+	if [ $i -ne ${a[0]} ];then
+		echo "Malformattata: nr di righe sbagliato" >&2
+		exec 7>&-
+		exit 1
+	fi
+	result=OK
+	exec 7>&-
+}
+#controllo di un solo argomento
+
+if [ $# -eq 1 ];then
+	case "$1" in
+
+	--help)
+		mhelp
+		;;
+	*)
+		if [ -f $1 ];then
+			format $1
+			echo $result >&2
+		else
+			echo "Not a FILE and not an OPTION" >&2
+			mhelp
+			exit 1
+		fi
+		;;
+	esac
+else
+	# ciclo di controllo delle opzioni -f e -s
+	for i in $@
+	do
+		if [ -f $i ];then
+			file=$i
+		fi
+	done
+	if [ -z $file ];then
+		echo "No File Passed" >&2
+		exit 1
+	fi
+	fish=0
+	shark=0
+	while [ $# -gt 0 ]
+	do	
+		case "$1" in
+
+		-f)
+			format $file
+			exec 7< $file
+			while read -u 7 a
+			do
+				for word in $a
+				do
+					if [ $word == "F" ];then
+						fish=$((fish+1))
+					fi
+				done
+			done
+			exec 7>&-
+			echo $fish
+			;;
+
+		-s)
+			format $file
+			exec 7< $file
+			while read -u 7 b
+			do
+				for word in $b
+				do
+					if [ $word == "S" ];then
+						shark=$((shark+1))
+					fi
+				done
+			done
+			exec 7>&-
+			echo $shark
+			;;
+		*)
+			if [ $1 != $file ];then
+				echo "Not an Option" >&2
+				mhelp
+				exit 1
+			fi
+			;;
+		esac
+		shift
+	done
+fi

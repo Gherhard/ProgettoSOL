@@ -1,0 +1,54 @@
+=========================================================================
+ISTRUZIONI e SPECIFICHE per il progetto finale
+========================================================================
+
+Il per sostenere l'esame di SOL si deve realizzare un progetto diviso
+in tre frammenti relativo al modulo di laboratorio (LSO) 
+
+Il progetto prevede l'implementazione di un seimulatore di un semplice modell obiologico.
+
+
+------------------------------------------------
+Estrarre il materiale dal file TAR
+------------------------------------------------
+Creare una directory temporanea, copiare il file tar
+nella directory e spostarsi nella directory appena creata. Es.
+
+$$ mkdir Frammento2
+$$ mv lsokit_f2WATOR.tar Frammento
+$$ cd Frammento2
+
+S-tarare i file del kit
+
+$$ tar xvf lsokit_f2WATOR.tar 
+
+questa operazione crea una directory WATOR/
+che a sua volta contiene le seguenti directory:
+
+doc/
+	che contiene la documentazione del progetto
+
+src/
+	che contiene i file di include relativi alle funzioni da implementare,
+	gli script ed il materiale per i test 
+
+
+ed il file sharks2015.pdf che contiene le specifiche complessive del progetto.
+
+Leggere attentamente le specifiche e procedere prima allo sviluppo della
+libreria (vedi src/README-1), poi a quello dello script e della versione iniziale dei processi coinvolti (vedi src/README-2) e infine della versione completa (vedi src/README-2 e src/README-3).
+
+
+----------------------------
+ VALUTAZIONE DEL PROGETTO
+----------------------------
+
+Gli studenti che consegnano una versione funzionante e ragionevolmente
+corretta dei tre frammenti di progetto entro le tre date di scadenza
+segnalate sul WEB bonus di 2 punti a frammento che verra' sommato al
+voto finale (vedi lucidi lezioni ed esercitazioni).
+
+La qualita' del codice consegnato contribuira' alla votazione finale insime
+alla prova orale e al codice degli altri frammenti. Per i criteri di
+valutazione rimandiamo alla sezione corrispondente del file delle specifiche
+

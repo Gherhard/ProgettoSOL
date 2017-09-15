@@ -1,0 +1,351 @@
+/** \file processowator.c
+       \author Bachmann Gherhard
+     Si dichiara che il contenuto di questo file e' in ogni sua parte opera
+     originale dell' autore.  */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <mcheck.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <fcntl.h>
+#include "wator.h"
+#include <limits.h>
+#include <pthread.h>
+#include <signal.h>
+#define NWORK_DEF 10
+#define CHRON_DEF 6
+#define SOCKNAME "visual.sck"	/* nome socket */
+#define UNIX_PATH_MAX 108 /*man 7 unix */
+#define FILE1 "wator.check"
+typedef struct
+{
+	int id;
+	pthread_t tid;
+}workers; /* struttura per i workers */
+workers * wo;
+wator_t* pf;
+int nwork=NWORK_DEF;
+int chron=CHRON_DEF;
+int socket_descw;
+struct sockaddr_un wat;
+sigset_t signal_set;
+volatile sig_atomic_t fine=0;
+int sig_number;
+/* Uso sigwait per aspettare il segnale, quindi creo un thread signal_waiter dedicato all'attesa dei segnali */
+/* Appena arriva sigint o sigterm non finisce subito ma fa un ultima iterazione e viene quindi fatta anche dal visualizer */
+/*dopo l'ultima iterazione mando i segnali (sig_number) a visualizer che finisce pure lui senza fare nient altro, eccetto le chiusure */
+void* signal_waiter(void *arg)
+{
+	FILE *f;
+	while(1)
+	{
+		sigwait(&signal_set,&sig_number);
+		if(sig_number==SIGUSR1)
+		{
+			f=fopen(FILE1,"w");
+			write(1,"Wator Recevied SIGUSR1\n",strlen("Wator Recevied SIGUSR1\n"));
+			print_planet(f,(pf->plan));
+			fclose(f);
+		}
+		else
+		{
+			if(sig_number==SIGINT)
+			{
+				write(2,"Wator Recevied SIGINT\n",strlen("Wator Recevied SIGINT\n"));
+				fine=1;
+				break;
+			}
+			if(sig_number==SIGTERM)
+			{
+				write(2,"Wator Recevied SIGTERM\n",strlen("Wator Recevied SIGTERM\n"));	
+				fine=1;
+				break;				
+			}
+		}
+	}
+	pthread_exit((void*)EXIT_FAILURE);
+}
+static void * collector (void * arg)
+{
+	int i,j;
+	char c;
+	if((socket_descw=socket(AF_UNIX,SOCK_STREAM,0)) < 0) /* creazione socket */
+	{
+		perror("Creation Error");
+		pthread_exit((void*)EXIT_FAILURE);
+	}
+	while((connect(socket_descw, (struct sockaddr *)&wat, sizeof(wat))) == -1) /* connessione socket */
+	{
+		if(errno==ENOENT) /* aspetto */
+			sleep(3);
+		else
+		{
+			perror("Connection Failed");
+			close(socket_descw);
+			unlink(SOCKNAME);
+			pthread_exit((void*)EXIT_FAILURE);
+		}
+	}
+	if( write(socket_descw,&(pf->plan->nrow),sizeof(pf->plan->nrow)) < 0) /* scrittura di nrow */
+	{
+		perror("In write 1");
+		unlink(SOCKNAME);
+	}
+	if( write(socket_descw,&(pf->plan->ncol),sizeof(pf->plan->ncol)) < 0) /* scrittura di ncol */
+	{
+		perror("In write 2");
+		unlink(SOCKNAME);
+	}
+	for(i=0;i<(pf->plan->nrow);i++)
+		for(j=0;j<(pf->plan->ncol);j++)
+		{
+			c=cell_to_char(pf->plan->w[i][j]);
+			if((write(socket_descw,&c,sizeof(c))) < 0) /* scrittura della matrice, carattere per carattere */
+			{
+				perror("In write 3");
+				unlink(SOCKNAME);
+			}
+		}
+	/*write(2,"Fine Collector\n",strlen("Fine Collector\n"));*/
+	close(socket_descw);
+	pthread_exit((void*)EXIT_FAILURE);
+}
+static void * worker (void * arg) 
+{
+	/* i thread worker, per ora creano soltanto il file wator_worker_wid */
+	FILE *f;
+	int wid;
+	char nome[30];
+	wid = *(int*) arg;
+	sprintf(nome,"wator_worker_%d",wid);
+	f=fopen(nome,"w");
+	fclose(f);
+	pthread_exit((void *) 1);
+}
+static void * dispatcher( void *arg)
+{
+	int i,err;
+	wo=(workers*)malloc(nwork*sizeof(workers));
+	if(pf->nwork != nwork) /* verifico il numero di work */
+		pf->nwork=nwork;
+	/* creo i worker */
+	for(i=0;i<nwork;i++)
+	{
+		wo[i].id=i;
+		if( (err=pthread_create(&wo[i].tid,NULL,&worker,(void*)&wo[i].id )!= 0))
+		{
+			fprintf(stderr,"Errore nella creazione del thread dispatcher\n");
+			pthread_exit((void*)EXIT_FAILURE);
+		}			
+	}
+	for(i=0;i<nwork;i++)
+	{
+		if(pthread_join(wo[i].tid,NULL) != 0)
+		{
+			fprintf(stderr,"Join Error!\n");
+			pthread_exit((void*)EXIT_FAILURE);
+		}
+	}
+	free(wo);
+	pthread_exit((void*)EXIT_FAILURE);
+}
+void proc_wator(char *p,int pid)
+{
+	/* Creazione dei thread dispatcher , collector e il signal handler */
+	pthread_t tid;
+	pthread_t tid2;
+	pthread_t signal_thread_id;
+	/*-------------segnale-----------*/
+	sigemptyset(&signal_set);
+	sigaddset(&signal_set,SIGINT);
+	sigaddset(&signal_set,SIGTERM);
+	sigaddset(&signal_set,SIGUSR1);
+	if((pthread_sigmask(SIG_BLOCK,&signal_set,NULL))!=0)
+	{
+		fprintf(stderr,"Sigmask Error!\n");
+		exit(EXIT_FAILURE);
+	}
+	/* handler del segnale */
+	if((pthread_create(&signal_thread_id,NULL,&signal_waiter,NULL))!=0)
+	{
+		fprintf(stderr,"Thread Creation Error!\n");
+		pthread_exit((void*)EXIT_FAILURE);
+	}
+	/*--------------------------------------------*/
+
+	while(!fine)
+	{
+		/* creazione thread dispatcher */
+		if((pthread_create(&tid,NULL,&dispatcher,NULL)) != 0 )
+		{
+			fprintf(stderr,"Errore nella creazione del thread dispatcher\n");
+			pthread_exit((void*)EXIT_FAILURE);
+		}
+		if(pthread_join(tid,NULL) != 0)
+		{
+			fprintf(stderr,"Join Error!\n");
+			pthread_exit((void*)EXIT_FAILURE);
+		}
+		/* creazione thread collector */
+		if((pthread_create(&tid2,NULL,&collector,NULL)) != 0 )
+		{
+			fprintf(stderr,"Errore nella creazione del thread dispatcher\n");
+			pthread_exit((void*)EXIT_FAILURE);
+		}
+		if(pthread_join(tid2,NULL) != 0)
+		{
+			fprintf(stderr,"Join Error!\n");
+			pthread_exit((void*)EXIT_FAILURE);
+		}
+	}
+	
+	if(pthread_join(signal_thread_id,NULL) != 0)
+	{
+		fprintf(stderr,"Join Error!\n");
+		pthread_exit((void*)EXIT_FAILURE);
+	}
+	/* dopo che ha finito il suo ultimo ciclo manda i segnali al visualizer */
+	/* visualizer riceve i segnali dopo che lui ha gia fatto l'ultima iterazione. Quindi in teoria anche visualizer avrebbe finito */
+	if(sig_number==SIGINT)
+	{
+		kill(pid,SIGINT);
+		waitpid(pid,NULL,0);
+	}
+	if(sig_number==SIGTERM)
+	{
+		kill(pid,SIGTERM);
+		waitpid(pid,NULL,0);
+	}
+	
+}
+int main (int argc , char* argv[])
+{
+	int pid,fv=0,fn=0,ff=0;
+	char dump[30];	/* stringa di max 30 caratteri che conterra il nome del dumpfile */
+	char *planet;
+	int opt; /* per la gestione delle opzioni */
+	pf=(wator_t*)malloc(sizeof(wator_t));
+	if(pf==NULL)
+	{
+		perror("Allocazione fallita");
+		exit(EXIT_FAILURE);
+	}
+	if( argc > 8 || argc < 2) /* troppi argomenti oppure troppo pochi argomenti */
+	{
+		fprintf(stderr,"Troppi/Troppo pochi argomenti!!\n");
+		free(pf);
+		return -1;
+	}
+	strcpy(dump,"stdout"); /* inizializzo dump  a stdout */
+	while (( opt = getopt (argc,argv,"n:v:f:")) !=-1) /* gestione dell'opzioni con getopt */
+	{
+		switch(opt)
+		{
+		/* fn fv e ff sono contatori delle opzioni, cosi verifico che un opzione non e' stata inserita piu volte */
+			case 'n':
+				if(fn == 0)
+				{
+					fn++;
+					nwork=atoi(optarg);
+					break;
+				}
+				else
+				{
+					fprintf(stderr,"Inserito -n piu volte\n");
+					free(pf);
+					exit(EXIT_FAILURE);
+				}
+			case 'v':
+				if(fv == 0)
+				{
+					fv++;
+					chron=atoi(optarg);
+					break;
+				}
+				else
+				{
+					fprintf(stderr,"Inserito -v piu volte\n");
+					free(pf);
+					exit(EXIT_FAILURE);
+				}
+			case 'f':
+				if(ff == 0)
+				{
+					ff++;
+					strcpy(dump,optarg);
+					break;
+				}
+				else
+				{
+					fprintf(stderr,"Inserito -f piu volte\n");
+					free(pf);
+					exit(EXIT_FAILURE);
+				}
+			default:
+				{
+					fprintf(stderr,"Opzione sbagliata\n");
+					free(pf);
+					exit(EXIT_FAILURE);
+				}
+		}
+	}
+	/* controllo delle opzioni */
+	if( (argc-1) != optind && argv[optind] != NULL)
+	{
+		/* significa che ce un altro argomento dopo optind, quindi sono stati passati piu file */
+		printf("argc= %d , optind= %d \n",argc,optind);
+		fprintf(stderr,"Troppi file passati\n");
+		exit(1);
+	}
+	if(argv[optind]==NULL)
+	{
+		fprintf(stderr,"Nessuno file passato\n");
+		exit(EXIT_FAILURE);
+	}
+	planet=(char*)malloc(strlen(argv[optind])*sizeof(char));
+	strcpy(planet,argv[optind]); /* nome del file e' dentro optind */
+	pf=new_wator(planet);
+	if(pf==NULL)
+	{
+		fprintf(stderr,"Nessun file valido passato\n");
+		exit(EXIT_FAILURE);
+	}
+	/* parte inizializzazione socket */
+	memset(&wat,0,sizeof(wat));
+	wat.sun_family=AF_UNIX;
+	strncpy(wat.sun_path,SOCKNAME,UNIX_PATH_MAX);
+	/*-----------------------------------------*/
+	/* parte dei processi */
+	pid=fork();
+	if(pid < 0)
+	{
+		perror("ERRORE Creazione del figlio");
+		free_wator(pf);
+		exit(EXIT_FAILURE);
+	}
+	if(pid==0) /* figlio manda in esecuzione il visualizer */
+	{
+		if( (execl("./visualizer","visualizer",dump,NULL)) == -1)
+		{
+			perror("Exec error");
+			free_wator(pf);
+			exit(EXIT_FAILURE);
+		}
+	}	
+	if(pid) /* padre, processo wator */
+	{
+		proc_wator(planet,pid);
+	}
+	/* chiusure e free */
+	free(planet);
+	free_wator(pf);
+	unlink(SOCKNAME);
+	write(2,"Wator Finito\n",strlen("Wator Finito\n"));
+	return 0;
+}

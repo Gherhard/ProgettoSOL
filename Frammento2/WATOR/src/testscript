@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# \file testscript
+#       test  automatici dello script richiesto
+# \author lso15
+ 
+let i=1
+# invocazioni non valide
+# opzione -a  non permessa
+echo "Test $i"
+((i++))
+if ./watorscript -a ; then
+    exit 1
+fi
+
+
+
+# opzione -f  ripetuta
+echo "Test $i"
+((i++))
+if ./watorscript -f planet1.dat -f ; then
+    exit 1
+fi
+
+# mancano i file da elaborare
+echo "Test $i"
+((i++))
+if ./watorscript -f planet1.dat -f ; then
+    exit 1
+fi
+
+# mancano file da elaborare
+echo "Test $i"
+((i++))
+if ./watorscript -s ; then
+    exit 1
+fi
+
+# file non esiste
+echo "Test $i"
+((i++))
+if ./watorscript -s ___ciccio ; then
+    exit 1
+fi
+
+# doppia opzione
+echo "Test $i"
+((i++))
+if ./watorscript -s -f planet1.dat ; then
+    exit 1
+fi
+
+echo "Test $i"
+((i++))
+if ./watorscript --help ; then
+    exit 1
+fi
+
+
+# file esistente
+# mal formato
+echo "Test $i"
+((i++))
+if ./watorscript wator.conf ; then
+    exit 1
+fi
+
+# file esistenti ben formati
+echo "Test $i"
+((i++))
+if ! ./watorscript planet1.dat ; then
+    exit 1
+fi
+
+echo "Test $i"
+((i++))
+if ! ./watorscript planet2.dat ; then
+    exit 1
+fi
+
+echo "Test $i"
+((i++))
+if ! ./watorscript planet2.dat -s ; then
+    exit 1
+fi
+
+echo "Test $i"
+((i++))
+if ! ./watorscript -f planet2.dat ; then
+    exit 1
+fi
+
+echo "Test $i"
+((i++))
+if ! ./watorscript planet1.dat -s ; then
+    exit 1
+fi
+
+echo "Test $i"
+((i++))
+if ! ./watorscript -f planet1.dat ; then
+    exit 1
+fi
+
+exit 0
+
+

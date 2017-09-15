@@ -1,0 +1,1041 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <mcheck.h>
+#include <errno.h>
+#include <time.h>
+#include "wator.h"
+
+char cell_to_char (cell_t a)
+{	
+	switch(a)
+	{
+		case WATER:  return 'W';
+		
+		case SHARK: return 'S';
+		
+		case FISH: return 'F';
+		
+		default: return '?';
+	}
+
+}/*funzione*/
+
+int char_to_cell (char c)
+{
+	switch(c)
+	{
+		case 'W':  return WATER;
+		
+		case 'S': return SHARK;
+		
+		case 'F': return FISH;
+		
+		default: return -1;
+	}
+}
+
+planet_t * new_planet (unsigned int nrow, unsigned int ncol)
+{
+	int i,j;
+	planet_t *p;
+	p=(planet_t*)malloc(sizeof(planet_t));
+	if(p==NULL)
+		return NULL;
+	p->nrow=nrow;
+	p->ncol=ncol;
+	p->w=(cell_t **)malloc(nrow * sizeof(cell_t*));
+	if((p->w) == NULL)
+	{
+		free(p);
+		return NULL;
+	}
+	for(i=0;i<nrow;i++)
+	{
+		p->w[i]=(cell_t*)malloc(ncol * sizeof(cell_t));
+		if((p->w[i])==NULL)
+		{
+			j=i-1;
+			for(j=i-1;j>=0;j--)
+			{
+				free(p->w[j]);
+			}
+			free(p->w);
+			free(p);
+			return NULL;
+		}
+	}
+	/*BTIME*/
+	p->btime=(int**)malloc(nrow * sizeof(int *));
+	if(p->btime==NULL)
+	{
+		for(i=0;i<nrow;i++)
+			free(p->w[i]);
+		free(p->w);
+		free(p);
+		return NULL;	
+	}
+	for(i=0;i<nrow;i++)
+	{
+		p->btime[i]=(int *)malloc(ncol*sizeof(int));
+		/*free di btime[i]*/
+		if(p->btime[i]==NULL)
+		{
+			for(j=i-1;j>=0;j--)
+				free(p->btime[j]);
+			free(p->btime);
+			for(i=0;i<nrow;i++)
+			{
+				free(p->w[i]);
+			}
+			free(p->w);
+			free(p);
+			return NULL;
+		}
+		
+	}
+	/*DTIME*/
+	p->dtime=(int**)malloc(nrow * sizeof(int *));
+	if(p->dtime==NULL)
+	{
+		for(i=0;i<nrow;i++)
+			free(p->btime[i]);	
+		free(p->btime);
+		for(i=0;i<nrow;i++);
+			free(p->w[i]);
+		free(p->w);
+		free(p);
+		return NULL;	
+	}
+	for(i=0;i<nrow;i++)
+	{
+		p->dtime[i]=(int *)malloc(ncol*sizeof(int));
+		/*free di dtime[i]*/
+		if(p->dtime[i]==NULL)
+		{
+			for(j=i-1;j>=0;j--)
+				free(p->dtime[j]);
+			free(p->dtime);
+			for(i=0;i<nrow;i++)
+				free(p->btime[i]);
+			free(p->btime);
+			for(i=0;i<nrow;i++)
+				free(p->w[i]);
+			free(p->w);
+			free(p);
+			return NULL;
+		}
+		
+	}
+	for(i=0;i<nrow;i++)
+		for(j=0;j<ncol;j++)
+		{
+			p->w[i][j]=WATER;
+			p->btime[i][j]=0;
+			p->dtime[i][j]=0;
+		}
+	return p;
+}
+void free_planet (planet_t* p)
+{
+	int i;
+	for(i=0;i<p->nrow;i++)
+		free(p->dtime[i]);
+	free(p->dtime);
+	for(i=0;i<p->nrow;i++)
+		free(p->btime[i]);
+	free(p->btime);
+	for(i=0;i<p->nrow;i++)
+		free(p->w[i]);
+	free(p->w);
+	free(p);
+	return;
+}
+int print_planet (FILE* f, planet_t* p)
+{
+	char c;
+	int i,j;
+	if(f == NULL)
+	{
+		errno=EMFILE;
+		return -1;
+	}
+	fprintf(f, "%d\n",p->nrow);
+	fprintf(f, "%d\n",p->ncol);
+	for(i=0;i<(p->nrow);i++)
+	{
+		for(j=0;j<(p->ncol);j++)
+		{
+			c=cell_to_char((p->w[i][j]));
+			fprintf(f, "%c ",c);
+		}
+		if(i!=p->nrow-1)
+			fprintf(f,"\n");
+	}
+	return 0;
+
+}
+planet_t* load_planet (FILE* f)
+{
+	int nrow=0,ncol=0;
+	int i,j,ris=0;
+	char c,temp;
+	planet_t* p;
+	
+	ris=fscanf(f,"%d%c",&nrow,&c);
+	if(ris!=2 || c!='\n')
+	{
+		printf("Formattata male!!! Creazione pianeta fallito\n");
+		return NULL;
+	}
+	ris=fscanf(f,"%d%c",&ncol,&c);
+	if(ris!=2 || c!='\n')
+	{
+		printf("Formattata male!!! Creazione pianeta fallito\n");
+		errno = ERANGE;
+		return NULL;
+	}
+	if(nrow<=0 || ncol<=0)
+	{
+		printf("Nrow o Ncol Negativi o Nulli, creazione pianeta fallita\n");
+		errno = ERANGE;
+		return NULL;
+	}
+	p=new_planet(nrow,ncol);
+	
+	if(p==NULL)
+		return NULL;
+	printf("NROW= %d NCOL= %d\n",nrow,ncol);
+	for(i=0;i<nrow;i++)
+	{
+		for(j=0;j<ncol;j++)
+		{
+			fscanf(f,"%c%c",&c,&temp);
+			ris=char_to_cell (c);
+			if(j<ncol-1 && temp!=' ')
+			{
+				printf("Matrice malformattata!!\n");
+					errno = ERANGE;
+					return NULL;
+			}
+			if(j==ncol-1 && temp!='\n')
+			{
+				printf("Matrice malformattata!!\n");
+					errno = ERANGE;
+					return NULL;
+			}
+			if(ris==0)
+				p->w[i][j]=SHARK;
+			if(ris==1)					
+				p->w[i][j]=FISH;
+			if(ris==2)					
+				p->w[i][j]=WATER;
+			if(ris!=0 && ris!=1 && ris!=2)
+			{
+				printf("Matrice malformattata!!\n");
+				errno = ERANGE;
+				return NULL;
+			}
+		}
+	}
+	printf("LOAD OK!!\n");
+	return p;
+}
+wator_t* new_wator (char* fileplan)
+{
+	FILE* f;
+	FILE* wconf;
+	wator_t * neww;
+	int csd=0,csb=0,cfb=0;
+	char sep[2]=" ";
+	char a[3];
+	char b[5];
+	char str[1000];
+	char* token;
+	f=fopen(fileplan,"r");
+	wconf=fopen("./DATA/wator.conf.1","r");
+	if(wconf == NULL)
+	{
+		errno=EMFILE;
+		return NULL;
+	}
+	if(f == NULL)
+	{
+		errno=EMFILE;
+		return NULL;
+	}
+	neww=(wator_t*)malloc(sizeof(wator_t));
+	if(neww==NULL)
+		return NULL;
+	neww->plan=load_planet(f);
+	neww->nf=fish_count(neww->plan);
+	neww->nwork=0;
+	neww->ns=shark_count(neww->plan);
+	neww->chronon=0;
+
+	while(fgets(str, sizeof(str), wconf) != NULL)
+	{
+  		token=strtok(str,sep);
+		strcpy(a,token);/*uso a per controlli*/
+		token=strtok(NULL,"\n");
+		strcpy(b,token);/*uso b per controlli*/
+		if(strcmp("sd",a)==0)
+		{
+			if(csd==0)/*controllo per non avere due sd dentro il file*/
+			{
+				neww->sd=atoi(b);
+				csd++;
+			}
+			else
+			{
+				printf("wator.conf malformattato!!!\n");
+				return NULL;
+			}
+		}
+		if(strcmp("sb",a)==0)
+		{
+			if(csb==0)/*controllo per non avere due sb dentro il file*/
+			{
+				neww->sb=atoi(b);
+				csb++;
+			}
+			else
+			{
+				printf("wator.conf malformattato!!!\n");
+				return NULL;
+			}
+		}
+		if(strcmp("fb",a)==0)
+		{
+			if(cfb==0)/*controllo per non avere due fb dentro il file*/
+			{
+				neww->fb=atoi(b);
+				cfb++;
+			}
+			else
+			{
+				printf("wator.conf malformattato!!!\n");
+				return NULL;
+			}
+		}
+		
+	}
+	return neww;
+}
+void free_wator(wator_t* pw)
+{
+	free_planet(pw->plan);
+	free(pw);
+}
+/*Funzione che sceglie una posizione random per mangiare o per spostarsi dentro la shark_rule1*/
+/*casi facili in cui mangio un solo pesce*/
+void posrand(int x,int y,int su,int giu,int sx,int dx,int *k,int *l,int nrow,int ncol)
+{
+	int r;
+	srand(time(NULL));
+	if(su!=0 && giu==0 && sx==0 && dx==0)/*ho mangiato un solo pesce su*/
+	{
+		if(x==0)
+		{
+			*k=nrow-1;
+			*l=y;
+		}
+		else
+		{
+			*k=x-1;
+			*l=y;
+		}
+	}
+	if(su==0 && giu!=0 && sx==0 && dx==0)/*ho mangiato un solo pesce giu*/
+	{
+		if(x==nrow-1)
+		{
+			*k=0;
+			*l=y;
+		}
+		else
+		{
+			*k=x+1;
+			*l=y;
+		}
+	}
+	if(su==0 && giu==0 && sx!=0 && dx==0)/*ho mangiato un solo pesce a sx*/
+	{
+		if(y==0)
+		{
+			*k=x;
+			*l=ncol-1;
+		}
+		else
+		{
+			*k=x;
+			*l=y-1;
+		}
+	}
+	if(su==0 && giu==0 && sx==0 && dx!=0)/*ho mangiato un solo pesce a dx*/
+	{
+		if(y==ncol-1)
+		{
+			*k=x;
+			*l=0;
+		}
+		else
+		{
+			*k=x;
+			*l=y+1;
+		}
+	}
+	/*casi in cui ho due pesci che posso mangiare*/
+	/*su e sx*/
+	if(su!=0 && giu==0 && sx!=0 && dx==0)
+	{
+		r=rand()%2;/*il valore 0 per SU e 1 per SX*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}		
+		}
+		else
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}
+		}
+	}
+	/*su e dx*/
+	if(su!=0 && giu==0 && sx==0 && dx!=0)
+	{
+		r=rand()%2;/*il valore 0 per SU e 1 per DX*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}	
+		}
+		else
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+	/*su e giu*/
+	if(su!=0 && giu!=0 && sx==0 && dx==0)
+	{
+		r=rand()%2;/*il valore 0 per SU e 1 per GIU*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}
+		}
+		else
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}
+		}
+	}
+	/*sx e giu*/
+	if(su==0 && giu!=0 && sx!=0 && dx==0)
+	{
+		r=rand()%2;/*il valore 0 per SX e 1 per GIU*/
+		if(r==0)
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}
+		}
+		else
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}
+		}
+	}
+	/*sx e dx*/
+	if(su==0 && giu==0 && sx!=0 && dx!=0)
+	{
+		r=rand()%2;/*il valore 0 per SX e 1 per DX*/
+		if(r==0)
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}	
+		}
+		else
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+	/*giu e dx*/
+	if(su==0 && giu==0 && sx!=0 && dx!=0)
+	{
+		r=rand()%2;/*il valore 0 per GIU e 1 per DX*/
+		if(r==0)
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}	
+		}
+		else
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+	/*casi in cui ho 3 pesci che posso mangiare*/
+	/*su sx dx*/
+	if(su!=0 && giu==0 && sx!=0 && dx!=0)
+	{
+		r=rand()%3;/*0 per su, 1 per sx, 2 per dx*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}
+		}
+		if(r==1)
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}
+		}
+		if(r==2)
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+	/*su sx giu*/
+	if(su!=0 && giu!=0 && sx!=0 && dx==0)
+	{
+		r=rand()%3;/*0 per su, 1 per sx, 2 per giu*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}
+		}
+		if(r==1)
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}
+		}
+		if(r==2)
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}
+		}
+	}
+	/*su giu dx*/
+	if(su!=0 && giu!=0 && sx==0 && dx!=0)
+	{
+		r=rand()%3;/*0 per su, 1 per giu, 2 per dx*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}
+		}
+		if(r==1)
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}
+		}
+		if(r==2)
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+	/*sx giu dx*/
+	if(su==0 && giu!=0 && sx!=0 && dx!=0)
+	{
+		r=rand()%3;/*0 per sx, 1 per giu, 2 per dx*/
+		if(r==0)
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}
+		}
+		if(r==1)
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}
+		}
+		if(r==2)
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+	/*caso in cui posso mangiare 4 pesci*/
+	if(su!=0 && giu!=0 && sx!=0 && dx!=0)
+	{
+		r=rand()%3;/*0 per su, 1 per giu, 2 per sx, 3 per dx*/
+		if(r==0)
+		{
+			if(x==0)
+			{
+				*k=nrow-1;
+				*l=y;
+			}
+			else
+			{
+				*k=x-1;
+				*l=y;
+			}
+		}
+		if(r==1)
+		{
+			if(x==nrow-1)
+			{
+				*k=0;
+				*l=y;
+			}
+			else
+			{
+				*k=x+1;
+				*l=y;
+			}
+		}
+		if(r==2)
+		{
+			if(y==0)
+			{
+				*k=x;
+				*l=ncol-1;
+			}
+			else
+			{
+				*k=x;
+				*l=y-1;
+			}
+		}
+		if(r==3)
+		{
+			if(y==ncol-1)
+			{
+				*k=x;
+				*l=0;
+			}
+			else
+			{
+				*k=x;
+				*l=y+1;
+			}
+		}
+	}
+}
+void controlloPOS(wator_t* pw, int x, int y, int *su,int *giu,int *sx,int *dx,cell_t t)
+{
+	int temp;
+	if(x==0)/*se la x==0 per controllare su controllo la x di nrow-1*/
+	{
+		temp=(pw->plan->nrow)-1;
+		if(pw->plan->w[temp][y]==t)
+			*su=1;
+	}
+	else
+	{
+		if(pw->plan->w[x-1][y]==t)
+			*su=1;
+	}
+	if(x==(pw->plan->nrow)-1)/*se sono nell'ultima riga per controllare giu controllo la x di 0 */
+	{
+		if(pw->plan->w[0][y]==t)
+			*giu=1;
+	}
+	else
+	{
+		if(pw->plan->w[x+1][y]==t)
+			*giu=1;
+	}
+	if(y==0)/*se sono la prima colonna per controllare a sx controllo y di ncol-1*/
+	{
+		temp=(pw->plan->ncol)-1;
+		if(pw->plan->w[x][temp]==t)
+			*sx=1;
+	}
+	else
+	{	
+		if(pw->plan->w[x][y-1]==t)
+			*sx=1;
+	}
+	if(y==(pw->plan->ncol)-1)/*se sono sull'ultima colonna per controllare a destra controllo la y di 0*/
+	{
+		if(pw->plan->w[x][0]==t)
+			*dx=1;
+	}
+	else
+	{
+		if(pw->plan->w[x][y+1]==t)
+			*dx=1;
+	}
+	
+}
+int shark_rule1 (wator_t* pw, int x, int y, int *k, int* l)
+{
+	int su=0,sx=0,dx=0,giu=0;
+	if(pw->plan->nrow < x || pw->plan->ncol < y || x<=0 || y<=0 || pw->plan->w[x][y]!=SHARK)/*i casi di errore*/
+		return -1;
+	
+	/*MANGIARE*/
+	controlloPOS(pw,x,y,&su,&giu,&sx,&dx,FISH);
+	
+	/*controllo che ha mangiato*/
+	if(su!=0 || giu!=0 || sx!=0 || dx!=0)
+	{
+		printf("ho mangiato!! \n");
+		posrand(x,y,su,giu,sx,dx,k,l,(pw->plan->nrow),(pw->plan->ncol));
+		return EAT;
+	}
+	/* se nessuna delle celle adiacenti contengono pesci mi devo spostare con lo squalo in una posizione a caso adiacente*/
+	else
+	{
+		printf("Non Ho MANGIATO NIENTE!!\n");
+		/*se non ho mangiato niente allora le mie 4 posizioni sono ancora a 0*/
+		controlloPOS(pw,x,y,&su,&giu,&sx,&dx,WATER);
+		
+		/*controllo che si puo spostare in una cella adiacente*/
+		if(su!=0 || giu!=0 || sx!=0 || dx!=0)
+		{
+			posrand(x,y,su,giu,sx,dx,k,l,(pw->plan->nrow),(pw->plan->ncol));
+			return MOVE;
+		}
+		else/*cioe non mi posso spostare perche ci sono squali in tutte le celle adiacenti*/
+			return STOP;
+	}
+
+}
+int shark_rule2 (wator_t* pw, int x, int y, int *k, int* l)
+{
+	int su=0,giu=0,dx=0,sx=0;
+	if(pw->plan->nrow < x || pw->plan->ncol < y || x<=0 || y<=0 || pw->plan->w[x][y]!=SHARK )/*i casi di errore*/
+		return -1;
+	
+	if(pw->plan->btime[x][y] < pw->sb)/*non e' passato abbastanza tempo per la riproduzione dello squalo*/
+		pw->plan->btime[x][y]++;
+	if(pw->plan->dtime[x][y] < pw->sd)
+		pw->plan->dtime[x][y]++;
+	/*parte della riproduzione*/
+	if(pw->plan->btime[x][y] == pw->sb)/*lo squalo puo riprodursi*/
+	{
+		/*dobbiamo controllare dove c'e acqua intorno allo squalo*/
+		controlloPOS(pw,x,y,&su,&giu,&sx,&dx,WATER);		
+		if(su!=0 || giu!=0 || sx!=0 || dx!=0)
+		{
+			posrand(x,y,su,giu,sx,dx,k,l,(pw->plan->nrow),(pw->plan->ncol));
+			printf("Nascita dello squalo in posizione!\n");
+		}
+		
+	}
+	else
+		printf("Lo squalo non si puo riprodurre\n");
+	pw->plan->btime[x][y]=0;
+	/*parte morte*/
+	if(pw->plan->dtime[x][y]==pw->sd)
+	{
+		pw->plan->w[x][y]=WATER;
+		return DEAD;
+	}
+	else
+		printf("Lo squalo non muore nemmeno \n");
+	return ALIVE;
+
+}
+int fish_rule3 (wator_t* pw, int x, int y, int *k, int* l)
+{
+	int su=0,sx=0,dx=0,giu=0;
+	if(pw->plan->nrow < x || pw->plan->ncol < y || x<=0 || y<=0 || pw->plan->w[x][y]!=FISH)/*i casi di errore*/
+		return -1;
+
+	controlloPOS(pw,x,y,&su,&giu,&sx,&dx,WATER);
+	
+	/*controllo se mi sono spostato*/
+	if(su!=0 || giu!=0 || sx!=0 || dx!=0)
+	{
+		printf("il pesce si e' spostato!! \n");
+		posrand(x,y,su,giu,sx,dx,k,l,(pw->plan->nrow),(pw->plan->ncol));
+		return MOVE;
+	}
+	/* se nessuna delle celle adiacenti e' vuota*/
+	else
+	{
+		printf("Non mi sono spostato!!\n");
+			return STOP;
+	}
+}
+int fish_rule4 (wator_t* pw, int x, int y, int *k, int* l)
+{
+	int su=0,giu=0,dx=0,sx=0;
+	if(pw->plan->nrow < x || pw->plan->ncol < y || x<=0 || y<=0 || pw->plan->w[x][y]!=FISH)/*i casi di errore*/
+		return -1;
+
+	if(pw->plan->btime[x][y] < pw->fb)/*non e' passato abbastanza tempo per la riproduzione del pesce*/
+		pw->plan->btime[x][y]++;
+	/*parte della riproduzione*/
+	if(pw->plan->btime[x][y] == pw->sb)/*il pesce puo riprodursi*/
+	{
+		/*dobbiamo controllare dove c'e acqua intorno al nostro pesce*/
+		controlloPOS(pw,x,y,&su,&giu,&sx,&dx,WATER);		
+		if(su!=0 || giu!=0 || sx!=0 || dx!=0)
+		{
+			posrand(x,y,su,giu,sx,dx,k,l,(pw->plan->nrow),(pw->plan->ncol));
+			printf("Nascita del pesce OK!\n");
+			pw->plan->btime[x][y]=0;
+			pw->plan->btime[*k][*l]=0;/*non sono sicuro*/
+		}
+		else
+		{
+			printf("Nascita del pesce fallita!\n");
+			pw->plan->btime[x][y]=0;
+		}
+		
+	}
+	return 0;
+
+	/*controllare i vari casi di errori in tutte le shark rule*/
+}
+int fish_count (planet_t* p)
+{
+	int i=0,j=0,ris=0;
+	for(i=0;i<p->nrow;i++)
+		for(j=0;j<p->ncol;j++)
+		{
+			if(p->w[i][j]==FISH)
+				ris++;
+		}
+	printf("Nfish= %d\n",ris);
+	return ris;
+}	
+
+int shark_count (planet_t* p)
+{
+	int i=0,j=0,ris=0;
+	for(i=0;i<p->nrow;i++)
+		for(j=0;j<p->ncol;j++)
+		{
+			if(p->w[i][j]==SHARK)
+				ris++;
+		}
+	printf("Nshark= %d\n",ris);
+	return ris;
+}	
+/*
+int main(void)
+{
+	FILE *f;
+	FILE *confp;
+	
+	planet_t *plan;
+	wator_t* n;
+	int ris;
+	int k=0,l=0;
+	mtrace();
+	f=fopen("testooo.txt","w");
+	confp=fopen("/home/gherhard/Desktop/frammento1/WATOR/src/DATA/planet1.dat","r");
+	plan=load_planet(confp);
+	if(plan==NULL)
+	{
+		if((plan->nrow)<0 ||( plan->ncol)<0)
+			printf("Errore nella creazione del pianeta!\n");
+		return 0;
+	}
+	ris=print_planet(f,plan);
+	if(ris==-1)
+		printf("ERRORE\n");
+	fclose(f);
+	fclose(confp);
+	free_planet(plan);
+	n=new_wator("/home/gherhard/Desktop/frammento1/WATOR/src/DATA/planet1.dat");
+	printf("SD= %d\n",n->sd);
+	printf("SB= %d\n",n->sb);
+	printf("FB= %d\n",n->fb);
+	shark_rule1 (n,19,29, &k, &l);
+	printf("k= %d,l=%d \n",k,l);
+	shark_rule2 (n,2,17,&k,&l);
+	printf("k= %d,l=%d \n",k,l);
+	muntrace();
+	return 0;
+}*/

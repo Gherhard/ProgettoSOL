@@ -1,0 +1,158 @@
+=========================================================================
+ISTRUZIONI per il TERZO FRAMMENTO del PROGETTO 
+========================================================================
+
+Il progetto WATOR e' suddiviso in  tre frammenti.
+Il terzo e' descritto in questo README.
+
+Questo frammento prevede il completamento della realizzazione di wator e visualizer.
+
+------------------------------------------------
+Estrarre il materiale dal KIT di progetto
+------------------------------------------------
+Creare una directory temporanea, copiare lsokit_f3WATOR.tar   
+nella directory e spostarsi nella directory appena creata. Es.
+
+$$ mkdir Frammento3
+$$ mv lsokit_f3WATOR.tar Frammento3
+$$ cd Frammento3
+
+S-tarare i file del kit
+
+$$ tar xvf lsokit_f3WATOR.tar 
+
+questa operazione crea nella directory corrente una directory "WATOR" che
+contiene a sua volta la directory src/ 
+
+src/ contiene sorgenti, header, Makefile test etc
+
+========================================================================
+ISTRUZIONI per la realizzazione 
+========================================================================
+
+Le specifiche per la realizzazione di server e client si trovano nel file  
+ sharks2015.pdf (vedi kit frammento 2)
+
+Il kit il test finale del progetto invocabile con 
+
+$ make testfinale
+
+------------------------------------------------------------------
+File/Dir contenuti in src
+------------------------------------------------------------------
+
+README-3		: questo file
+
+testpar			: script bash di test del progetto
+                          (NON MODIFICARE)
+
+Makefile		: makefile per il test del frammento e la
+			  consegna 
+			  (MODIFICARE SOLO nelle parti richieste, vedi
+			  commenti nel file)
+
+DATA/		  Directory che contiene i vari file di dati/controllo
+			  usati nei test(NON MODIFICARE)
+
+------------------------------------------------
+Cosa deve essere realizzato
+------------------------------------------------
+
+Il terzo frammento usa librerie e script sviluppati nei frammenti
+precedenti e completa le versioni preliminari dei processi wator e visualizer
+realizzati nel secondo frammento.
+
+Il Makefile deve essere esteso con opportuni target per la
+compilazione e la generazione degli eseguibili wator e visualizer
+e dei moduli oggetto (file *.o).
+
+Inoltre, il Makefile contiene tre variabili 
+FILE_DA_CONSEGNARE1
+FILE_DA_CONSEGNARE2
+FILE_DA_CONSEGNARE3
+che devono contenere i nomi di tutti i file necessari alla corretta
+esecuzione del progetto. In particolare, 
+-- devono essere riconsegnati anche i file relativi ai primi 2 frammenti 
+-- deve essere consegnata una relazione 
+   (secondo le specifiche nel file sharks2015.pdf) formato PDF
+
+------------------
+Come procedere :
+-----------------
+
+0) leggere attentamente il README, le specifiche e capire il funzionamento 
+   degli esempi forniti
+
+1) ampliare i processi realizzati nel secondo frammento
+   realizzando tutte le funzionalita' richieste
+   testare incrementalmente i processi durante la realizzazione
+
+2) effettuare il test complessivo del terzo frammento 
+
+
+3) preparare la documentazione: scrivere la relazione come richiesto
+   dalle specifiche  verificare che ogni file sia commentato 
+   adeguatamente ed inserire una intestazione contenente il nome
+   dello sviluppatore ed una dichiarazione di originalita' 
+
+   /** \file pippo.c
+       \author Giacomo Leopardi
+     Si dichiara che il contenuto di questo file e' in ogni sua parte opera
+     originale dell' autore.  */
+
+     Non e' richiesto di preparare anche la documentazione formato
+     doxygen. Chi volesse farlo e' invitato a leggere il  README.doxigen
+     del primo frammento.
+
+4) copiare il file "gruppo.txt" (con nome e dati fornito nei frammenti
+   precedenti) e "gruppo-check.pl" all'interno della directory src/
+
+5) consegnare il file ESCLUSIVAMENTE eseguendo
+
+      bash:~$ make consegna3
+
+   e seguendo le istruzioni
+
+  Tutte le consegne verranno confermate con un messaggio entro 2/3
+   giorni. In caso questo non si verifichi contattare il docente.
+  
+
+ ---------------------------------------
+ NOTE IMPORTANTI: LEGGERE ATTENTAMENTE
+---------------------------------------
+
+1) i tar non creati da "make consegna3" non verranno accettati
+
+2) tutti gli elaborati verranno confrontati fra di loro con tool automatici
+   per stabilire eventali situazioni di PLAGIO. Se tali situazioni si
+   verificheranno *tutti* gli elaborato coinvolti verranno annullati con
+   conseguente perdita del bonus. 
+
+3) Tutti gli studenti coinvolti in un episodio di PLAGIO comprovato dovranno
+   re-implementare il frammento incriminato e saranno sottoposti ad una prova
+   orale supplementare. In caso di recidive verranno esclusi dalla
+   possibilita' di sostenere l'esame per TUTTO IL RESTO DELL'ANNO ACCADEMICO
+   IN CORSO.
+
+4) Chi in sede di orale risulta palesemente non essere l'autore del software
+   consegnato in uno dei frammenti verra' escluso dalla possibilita' di
+   sostenere l'esame per TUTTO IL RESTO DELL'ANNO ACCADEMICO IN CORSO.
+
+5) Tutti i comportamenti scorretti ai punti 3 e 4 verranno segnalati
+   ufficialmente al presidente del corso di laurea, che si riserva di
+   decidere azioni disciplinari supplementari a quelle sopra descritte.
+
+----------------------------
+ VALUTAZIONE DEL FRAMMENTO:
+----------------------------
+
+Il terzo frammento deve contenere la versione DEFINITIVA di tutto il
+codice e la relazione PDF. Questo codice verra' valutato secondo
+quanto specificato nella sezione apposita di sharks2015.pdf.
+
+
+
+
+
+
+

@@ -1,0 +1,226 @@
+=========================================================================
+ISTRUZIONI per il SECONDO FRAMMENTO del PROGETTO 
+========================================================================
+
+Il progetto WATOR e' suddiviso in  tre frammenti.
+Il secondo e' descritto in questo README.
+
+Questo frammento prevede la realizzazione di:
+
+1) watorscript: uno script per analizzare un file contenente il pianeta 
+                acquatico
+
+2) una versione iniziale dei processi wator e visualizer: che realizzano 
+   l'inizializzazione del pianeta e la gestione completa dei segnali e del
+   checkpointing -- richiedibile con il segnale SIGUSR1 
+
+------------------------------------------------
+Estrarre il materiale dal KIT 
+------------------------------------------------
+Creare una directory temporanea, copiare lsokit_f2WATOR.tar   
+nella directory e spostarsi nella directory appena creata. Es.
+
+$$ mkdir Frammento2
+$$ mv lsokit_f2WATOR.tar Frammento2
+$$ cd Frammento2
+
+S-tarare i file del kit
+
+$$ tar xvf lsokit_f2WATOR.tar 
+questa operazione crea nella directory corrente una directory "WATOR" che
+contiene:
+
+$$ ls WATOR
+doc/ src/ README sharks2015.pdf
+
+src/ contiene sorgenti, header, Makefile test etc
+doc/ contiene i file per la documentazione doxygen
+
+README spiega la struttura complessiva
+
+Le specifiche per la realizzazione complessiva del progetto
+si trovano nel file sharks.pdf
+
+========================================================================
+ISTRUZIONI per la realizzazione 
+========================================================================
+
+-----------------------------------------------
+Descrizione dei file in src/
+-----------------------------------------------
+
+README-2		: questo file
+
+Makefile		: makefile per il test finale dei primi 2 frammenti e la
+			  consegna  
+			  (NON MODIFICARE se non nelle parti richieste)
+
+testscript		  : script di test per watorscript
+
+DATA/*
+		:     file di dati ed output attesi per i test
+			   (NON MODIFICARE)
+
+testseq 		: script bash di test di wator e visualizer riguardo 
+                          alle funzionalita' di inizializzazione, 
+                          gestione segnali e checkpointing
+                          (NON MODIFICARE)
+
+
+------------------------------------------------
+Cosa deve essere realizzato: 1) script 
+------------------------------------------------
+
+Lo script elabora un file che descrive lo stato del pianeta acquatico 
+controllandone il formato e contando il numero di pesci e squali.
+Le specifiche del comportamento dello
+script si trovano nella Sezione specifica del file sharks2015.pdf. 
+
+----------------------------------------------------------------------------
+Nota su: Apertura, chiusura e lettura di file in BASH
+----------------------------------------------------------------------------
+L'apertura e la chiusura di un file puo' essere effettuata in bash attreverso
+la 'exec' in particolare:
+
+   exec n< file_name    
+
+apre il file file_name in lettura e gli assegna il file descriptor 'n' 
+
+   exec n> file_name
+
+apre il file file_name in scrittura (file descriptor n)
+
+   exec n<> file_name
+
+apre in lettura e scrittura. Invece per chiudere il file descriptor n
+
+   exec n>&-
+
+Dopo aver aperto il file e' possibile leggerlo utilizzando il comando 'read'
+con opzione -u numero_descrittore.
+
+
+------------------------------------------------
+Cosa deve essere realizzato: 2) versione preliminare di wator e visualizer
+------------------------------------------------
+
+Si devono realizzare wator e visualizer relativamente alle
+funzioni di inizializzazione, gestione dei segnali (terminazione gentile) e
+checkpointing richiesta dal segnale SIGUSR1 (vedi sharks2015.pdf).
+
+Il Makefile deve essere esteso con opportuni target per la
+compilazione e la generazione degli eseguibili wator e visualizer
+e dei moduli oggetto (file *.o).
+
+------------------
+Come procedere :
+-----------------
+
+0) leggere attentamente questo README 
+
+1) analizzare accuratamente i file di input (*.dat) e
+   l'ouput atteso (out*) 
+
+2.1) implementare lo script con le opportune sottofunzioni in un file
+   './watorscript' nella directory WATOR/src
+   testando incrementalmente il codice prodotto
+
+2.2) testare lo script con 
+
+       bash:~$ make test21
+
+  NOTA: 
+  (1) tutti i file sviluppati per la soluzione si devono trovare nella
+  directory WATOR/src
+  (2) E' importante che il test venga effettuato solo su uno script 
+  gia' ragionevolmente corretto  altrimenti i risultati possono essere di
+  difficile interpretazione, fuorvianti o inutili.
+
+3) implementare il wator e visualizer relativamente alle
+   funzionalita' richieste testando incrementalmente il codice prodotto
+
+4) testare con
+
+  bash:~$ make test22
+  bash:~$ make test23
+
+  NOTA: 
+  (1) tutti i file sviluppati per la soluzione si devono trovare nella
+  directory WATOR/src
+  (2) E' importante che il test venga effettuato solo su una versione
+  gia' ragionevolmente corretta  altrimenti i risultati possono essere di
+  difficile interpretazione, fuorvianti o inutili.
+
+
+5) preparare la documentazione: ovvero commentare adeguatamente i file 
+   aggiungendo la dichiarazione di originalita'
+
+   #!/bin/bash
+   #
+   # \file watorscript
+   # \author Giuseppe Verdi
+   #  Si dichiara che il contenuto di questo file e' in ogni sua parte opera
+   #  originale dell' autore. 
+ 
+   /** \file pippo.c
+       \author Giuseppe Verdi
+     Si dichiara che il contenuto di questo file e' in ogni sua parte opera
+     originale dell' autore.  */
+
+     Non e' richiesto di preparare anche la documentazione formato
+     doxygen. Chi volesse farlo e' invitato a leggere il  README.doxigen
+     del primo frammento.
+
+
+6) copiare il file "gruppo.txt" (con nome e dati fornito nei frammenti
+   precedenti) e "gruppo-check.pl" all'interno della directory src/
+
+7) consegnare il file ESCLUSIVAMENTE eseguendo
+
+      bash:~$ make consegna2
+
+   e seguendo le istruzioni. 
+
+   Tutte le consegne verranno confermate con un messaggio di reply
+   all'indirizzo da cui e' stato inviato il tar entro 2/3
+   giorni. In caso questo non si verifichi contattare il docente.
+   
+---------------------------------------
+ NOTE IMPORTANTI: LEGGERE ATTENTAMENTE
+---------------------------------------
+
+1) gli eleborati non contenenti un tar creato da
+   "make consegna2" non verranno accettati
+
+2) tutti gli elaborati verranno confrontati fra di loro con tool automatici
+   per stabilire eventali situazioni di PLAGIO. Se tali situazioni si
+   verificheranno *tutti* gli elaborati coinvolti verranno annullati con
+   conseguente perdita del bonus. 
+
+3) Tutti gli studenti coinvolti in un episodio di PLAGIO comprovato dovranno
+   re-implementare il frammento incriminato e saranno sottoposti ad una prova
+   orale supplementare. In caso di recidive verranno esclusi dalla
+   possibilita' di sostenere l'esame per TUTTO IL RESTO DELL'ANNO ACCADEMICO
+   IN CORSO.
+
+4) Chi in sede di orale risulta palesemente non essere l'autore del software
+   consegnato in uno dei frammenti verra' escluso dalla possibilita' di
+   sostenere l'esame per TUTTO IL RESTO DELL'ANNO ACCADEMICO IN CORSO.
+
+5) Tutti i comportamenti scorretti ai punti 3 e 4 verranno segnalati
+   ufficialmente al presidente del corso di laurea, che si riserva di
+   decidere azioni disciplinari supplementari a quelle sopra descritte.
+
+----------------------------
+ VALUTAZIONE DELL'ESERCIZIO:
+----------------------------
+
+Gli studenti che consegnano una versione funzionante e ragionevolmente
+corretta  entro la data di scadenza prevista su WEB
+accumulano un bonus di 2 punti che verra' sommato al voto finale (vedi
+lucidi lezioni ed esercitazioni).
+
+La qualita' del codice consegnato verra' valutata come
+parte del progetto finale e contribuira' alla votazione assegnata al progetto.
+Eventuali caratteristiche in piu' rispetto a quelle strettamente richieste
+dalle specifiche date verranno valutate in questa sede.
